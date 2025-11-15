@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TrustLend - ผู้กู้ (Dashboard)</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+  <style>
+    /* Theme A - Dark Navy */
+    :root{
+      --bg: #0d1117;
+      --panel: #0f1724;
+      --card: #0e1622;
+      --muted: #9ca3af;
+      --text: #e5e7eb;
+      --accent: #3b82f6; /* blue */
+      --accent-2: #00f2fe;
+      --glass: rgba(255,255,255,0.03);
+      --glass-strong: rgba(255,255,255,0.05);
+      --success: #10b981;
+      --danger: #f87171;
+      --warning: #f59e0b;
+      --max-width: 1200px;
+      --radius: 12px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+    html,body{height:100%}
+    body{
+      background: var(--bg);
+      color:var(--text);
+      padding:18px;
+      min-height:100vh;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .app {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 20px;
+    }
+
+    /* SIDEBAR */
+    .sidebar{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: 16px;
+      padding: 18px;
+      height: calc(100vh - 36px);
+      position: sticky;
+      top: 18px;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .brand{
+      display:flex;align-items:center;gap:12px;margin-bottom:18px;
+    }
+    .logo {
+      width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#04132a;
+      box-shadow:0 6px 20px rgba(59,130,246,0.15);
+    }
+    .brand h3{font-size:1.05rem;margin:0}
+    .nav{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+    .nav a{
+      display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;color:var(--muted);text-decoration:none;font-weight:600;font-size:0.95rem;
+    }
+    .nav a:hover{background:rgba(59,130,246,0.08);color:var(--accent);}
+    .nav a.active{background:rgba(59,130,246,0.12);color:var(--accent);border-left:3px solid var(--accent);padding-left:7px;}
+
+    /* MAIN PANEL */
+    .main {
+      display:flex;flex-direction:column;gap:18px;
+    }
+    .topbar{
+      display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-radius:12px;background:var(--glass);border:1px solid rgba(255,255,255,0.02);
+    }
+    .topbar .left { display:flex; gap:12px; align-items:center; }
+    .topbar .title { font-weight:800; font-size:1.1rem; }
+    .topbar .right { display:flex; gap:12px; align-items:center; }
+
+    .addr {
+      background: rgba(255,255,255,0.02);
+      padding:8px 12px;border-radius:999px;font-weight:700;color:var(--muted);
+    }
+
+    /* METRICS GRID */
+    .metrics {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+    }
+    .metric {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03);
+    }
+    .metric .label{color:var(--muted);font-size:0.85rem}
+    .metric .value{font-weight:800;font-size:1.3rem;margin-top:8px;color:var(--text)}
+
+    /* LAYOUT for content: left column form + right column loans */
+    .content-grid {
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap:18px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.03);
+    }
+
+    /* form */
+    label { display:block;color:var(--muted);font-weight:700;margin-top:8px;font-size:0.85rem }
+    input, select {
+      width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);margin-top:6px;font-weight:700;
+      transition:box-shadow .18s, border-color .18s;
+    }
+    input:focus{outline:none;border-color:rgba(59,130,246,0.7);box-shadow:0 6px 20px rgba(59,130,246,0.06)}
+    .muted-text{color:var(--muted);font-size:0.9rem;margin-top:8px}
+
+    button {
+      display:inline-block;padding:12px 14px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#04132a;font-weight:800;cursor:pointer;margin-top:12px;
+    }
+    button.secondary { background:transparent;border:1px solid rgba(255,255,255,0.06); color:var(--text) }
+
+    .status {
+      padding:10px 12px;border-radius:10px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.08);color:var(--accent);font-weight:700;
+    }
+
+    /* loan list */
+    .loan-list { display:flex;flex-direction:column;gap:12px; }
+    .loan-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+      border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:10px;
+    }
+    .loan-head { display:flex;justify-content:space-between;align-items:center;gap:12px }
+    .loan-meta { color:var(--muted); font-size:0.9rem }
+    .badge { padding:6px 10px;border-radius:999px;font-weight:800;font-size:0.85rem }
+    .badge.pending{background:rgba(245,158,11,0.12);color:var(--warning)}
+    .badge.active{background:rgba(16,185,129,0.12);color:var(--success)}
+    .badge.repaid{background:rgba(59,130,246,0.12);color:var(--accent)}
+
+    .progress {
+      height:10px;background:rgba(255,255,255,0.04);border-radius:8px;overflow:hidden;margin-top:8px;
+    }
+    .progress > i { display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%;transition:width .5s ease }
+
+    .health {
+      display:flex;align-items:center;gap:8px;font-weight:800;
+    }
+
+    .info-line { display:flex;justify-content:space-between;color:var(--muted);font-size:0.9rem }
+
+    /* responsive */
+    @media (max-width: 980px){
+      .app { grid-template-columns: 1fr; padding-bottom:80px }
+      .sidebar { height:auto; position:relative; order:2 }
+      .content-grid { grid-template-columns: 1fr }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="brand">
+        <div class="logo">TL</div>
+        <div>
+          <h3>TrustLend</h3>
+          <div style="color:var(--muted);font-size:0.85rem">ผู้กู้ · Dashboard</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a href="#" class="active">📊 Dashboard</a>
+        <a href="#request">➕ ขอสินเชื่อ</a>
+        <a href="#myloans">💼 สินเชื่อของฉัน</a>
+        <a href="#history">📜 ประวัติการชำระ</a>
+        <a href="#settings">⚙️ การตั้งค่า</a>
+      </nav>
+
+      <div style="margin-top:18px;font-size:0.9rem;color:var(--muted)">
+        <div style="margin-bottom:8px">คำแนะนำ</div>
+        <div style="font-size:0.85rem;color:var(--muted)">ตรวจสอบ Health Factor และหลักประกันก่อนส่งคำขอ</div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="topbar">
+        <div class="left">
+          <div class="title">📊 Dashboard - ผู้กู้</div>
+          <div style="color:var(--muted);margin-left:8px">จัดการสินเชื่อและชำระเงิน</div>
+        </div>
+        <div class="right">
+          <div id="status" class="status">กำลังเชื่อมต่อ...</div>
+          <div class="addr" id="addr_display">0x—</div>
+        </div>
+      </div>
+
+      <!-- metrics -->
+      <div class="metrics">
+        <div class="metric">
+          <div class="label">Total Outstanding</div>
+          <div class="value" id="metric_total">0.00 TDAI</div>
+        </div>
+        <div class="metric">
+          <div class="label">Collateral Value (ETH)</div>
+          <div class="value" id="metric_coll">0.00 ETH</div>
+        </div>
+        <div class="metric">
+          <div class="label">Health Factor (avg)</div>
+          <div class="value" id="metric_health">—</div>
+        </div>
+        <div class="metric">
+          <div class="label">Next Payment</div>
+          <div class="value" id="metric_next">—</div>
+        </div>
+      </div>
+
+      <!-- main content -->
+      <div class="content-grid">
+        <!-- LEFT: Request form -->
+        <section class="card" id="request" aria-labelledby="request-title">
+          <h3 id="request-title" style="margin-bottom:8px;color:var(--accent)">🔍 ขอสินเชื่อ</h3>
+          <div class="muted-text">กรอกข้อมูลตามต้องการ — ระบบจะคำนวณหลักประกันขั้นต่ำ</div>
+
+          <label for="amt">จำนวน TDAI (เช่น 1000)</label>
+          <input id="amt" placeholder="จำนวน TDAI (เช่น 1000)" oninput="updateCollateral()" />
+
+          <label for="rate">ดอกเบี้ยต่อปี (%)</label>
+          <input id="rate" placeholder="ดอกเบี้ยต่อปี (เช่น 10)" />
+
+          <label for="days">ระยะเวลา (วัน)</label>
+          <input id="days" placeholder="ระยะเวลา (วัน) (เช่น 30)" />
+
+          <label for="collateral">หลักประกัน ETH</label>
+          <input id="collateral" placeholder="หลักประกัน ETH (เช่น 0.6)" oninput="updateCollateral()" />
+
+          <div id="collateral_info" class="muted-text" style="margin-top:12px;color:var(--muted)">กรุณากรอกจำนวน TDAI เพื่อคำนวณหลักประกัน</div>
+
+          <div style="display:flex;gap:12px;margin-top:12px">
+            <button id="request_btn" onclick="requestLoan()" disabled>ส่งคำขอ</button>
+            <button class="secondary" onclick="updateCollateral()">คำนวณใหม่</button>
+          </div>
+
+          <div class="muted-text" id="req_result" style="margin-top:10px"></div>
+        </section>
+
+        <!-- RIGHT: Loans list -->
+        <section class="card" id="myloans">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3 style="color:var(--accent);margin:0">📂 สินเชื่อของฉัน</h3>
+            <div>
+              <button class="secondary" onclick="loadMyLoans()">รีเฟรช</button>
+            </div>
+          </div>
+
+          <div id="my_loans" style="margin-top:12px" class="loan-list">
+            <!-- loan cards injected here -->
+            <div style="text-align:center;color:var(--muted);padding:20px">กำลังโหลด...</div>
+          </div>
+        </section>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Script: keep logic intact but selectors are preserved -->
+  <script>
+  // Keep same constants & ABIs from original but trimmed here for brevity: (full ABIs below)
+  const TDAI_ADDRESS = "0x635e7d84B97A57dBFE4eCB81FD9CCf0166d61AB6";
+  const TRUSTLEND_ADDRESS = "0x62c85FbEB32863b99465BDFc67549e5Ea3C205f4";
+
+  const ETH_PRICE_USD = 2500;
+  const LTV_PERCENT = 150;
+
+  let web3, account, tdai, trustlend;
+
+  const TRUSTLEND_ABI = [ /* same as original ABI copied verbatim */ 
+    {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"interestRate","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"enum TrustLend.CollateralType","name":"collateralType","type":"uint8"}],"name":"requestLoan","outputs":[],"stateMutability":"payable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"loanId","type":"uint256"},{"internalType":"uint256","name":"paymentAmount","type":"uint256"}],"name":"makePayment","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"loanId","type":"uint256"}],"name":"calculateTotalOwed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"loanId","type":"uint256"}],"name":"calculateRemainingDebt","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"loanId","type":"uint256"}],"name":"getHealthFactor","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getLoanRequest","outputs":[{"components":[{"internalType":"address","name":"borrower","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"interestRate","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"collateral","type":"uint256"},{"internalType":"enum TrustLend.CollateralType","name":"collateralType","type":"uint8"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"internalType":"struct TrustLend.LoanRequest","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getActiveLoan","outputs":[{"components":[{"internalType":"address","name":"borrower","type":"address"},{"internalType":"address","name":"lender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"interestRate","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"collateral","type":"uint256"},{"internalType":"enum TrustLend.CollateralType","name":"collateralType","type":"uint8"},{"internalType":"enum TrustLend.LoanStatus","name":"status","type":"uint8"},{"internalType":"bool","name":"warningIssued","type":"bool"},{"internalType":"uint256","name":"paidAmount","type":"uint256"},{"internalType":"uint256","name":"lastPaymentTime","type":"uint256"}],"internalType":"struct TrustLend.ActiveLoan","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getMyRequestedLoans","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"loanId","type":"uint256"}],"name":"getLoanPaymentHistory","outputs":[{"components":[{"internalType":"uint256","name":"paymentId","type":"uint256"},{"internalType":"uint256","name":"loanId","type":"uint256"},{"internalType":"address","name":"payer","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"timestamp","type":"uint256"},{"internalType":"uint256","name":"remainingDebt","type":"uint256"}],"internalType":"struct TrustLend.Payment[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"}
+  ];
+
+  const TDAI_ABI = [
+    {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+  ];
+
+  async function init() {
+    try {
+      web3 = new Web3("http://127.0.0.1:7545");
+      const accounts = await web3.eth.getAccounts();
+      account = accounts[0];
+      document.getElementById("status").innerHTML = `<span style="color:var(--accent)">✅ ผู้กู้: ${account.slice(0,10)}...${account.slice(-8)}</span>`;
+      document.getElementById("addr_display").innerText = account.slice(0,6) + '...' + account.slice(-4);
+
+      tdai = new web3.eth.Contract(TDAI_ABI, TDAI_ADDRESS);
+      trustlend = new web3.eth.Contract(TRUSTLEND_ABI, TRUSTLEND_ADDRESS);
+
+      loadMyLoans();
+      setInterval(loadMyLoans, 5000);
+    } catch(e){
+      document.getElementById("status").innerHTML = `<span style="color:var(--danger)">❌ ไม่สามารถเชื่อมต่อ</span>`;
+      console.error(e);
+    }
+  }
+
+  function updateCollateral() {
+    const amtInput = document.getElementById("amt").value;
+    const collInput = document.getElementById("collateral").value;
+    const info = document.getElementById("collateral_info");
+    const btn = document.getElementById("request_btn");
+
+    if (!amtInput || parseFloat(amtInput) <= 0) {
+      info.innerHTML = "⚠️ กรุณากรอกจำนวน TDAI";
+      btn.disabled = true;
+      return;
+    }
+
+    const amountTDAI = parseFloat(amtInput);
+    const minUSD = amountTDAI * (LTV_PERCENT / 100);
+    const minETH = minUSD / ETH_PRICE_USD;
+    const collETH = parseFloat(collInput) || 0;
+
+    if (collETH >= minETH) {
+      info.innerHTML = `✅ เพียงพอ! ต้องการอย่างน้อย <strong>${minETH.toFixed(4)} ETH</strong> (150% LTV)`;
+      btn.disabled = false;
+    } else {
+      info.innerHTML = `❌ ไม่พอ! ต้องการอย่างน้อย <strong>${minETH.toFixed(4)} ETH</strong> (150% LTV)`;
+      btn.disabled = true;
+    }
+  }
+
+  async function requestLoan() {
+    const amtInput = document.getElementById("amt").value || "0";
+    const rateInput = document.getElementById("rate").value || "0";
+    const daysInput = document.getElementById("days").value || "0";
+    const collInput = document.getElementById("collateral").value || "0";
+    const resultDiv = document.getElementById("req_result");
+
+    if (!amtInput || !collInput || parseFloat(amtInput) <= 0 || parseFloat(collInput) <= 0) {
+      resultDiv.innerHTML = `<span style="color:var(--danger)">❌ กรุณากรอกข้อมูลให้ครบ</span>`;
+      return;
+    }
+
+    const amt = web3.utils.toWei(amtInput, "ether");
+    const rate = parseInt(rateInput);
+    const duration = parseInt(daysInput) * 86400;
+    const coll = web3.utils.toWei(collInput, "ether");
+
+    try {
+      document.getElementById("request_btn").disabled = true;
+      resultDiv.innerHTML = "⏳ กำลังส่งคำขอ...";
+
+      await trustlend.methods.requestLoan(amt, rate, duration, 0).send({
+        from: account,
+        value: coll,
+        gas: 500000
+      });
+
+      resultDiv.innerHTML = `<span style="color:var(--success)">✅ ส่งคำขอสำเร็จ! รอผู้ให้กู้...</span>`;
+      loadMyLoans();
+    } catch (e) {
+      resultDiv.innerHTML = `<span style="color:var(--danger)">❌ ผิดพลาด: ${e.message}</span>`;
+    } finally {
+      document.getElementById("request_btn").disabled = false;
+    }
+  }
+
+  async function loadMyLoans() {
+    try {
+      const ids = await trustlend.methods.getMyRequestedLoans(account).call();
+      const container = document.getElementById("my_loans");
+
+      if (!ids || ids.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--muted);">ยังไม่มีสินเชื่อ</div>';
+        document.getElementById("metric_total").innerText = "0.00 TDAI";
+        document.getElementById("metric_coll").innerText = "0.00 ETH";
+        document.getElementById("metric_health").innerText = "—";
+        document.getElementById("metric_next").innerText = "—";
+        return;
+      }
+
+      container.innerHTML = "";
+
+      let totalOutstanding = 0;
+      let totalColl = 0;
+      let healthAccum = 0;
+      let healthCount = 0;
+
+      for (let id of ids) {
+        const req = await trustlend.methods.getLoanRequest(id).call();
+        const loan = await trustlend.methods.getActiveLoan(id).call();
+
+        let statusBadge = '<span class="badge pending">รอผู้ให้กู้</span>';
+        let healthHTML = '';
+        let actionsHTML = '';
+        let historyHTML = '';
+
+        if (loan.status == 1) {
+          statusBadge = '<span class="badge active">กำลังกู้</span>';
+
+          const healthFactor = await trustlend.methods.getHealthFactor(id).call();
+          const hf = Number(healthFactor);
+          healthAccum += hf; healthCount++;
+
+          let barWidth = Math.min(hf/2, 100); // visual scale
+          const totalOwed = await trustlend.methods.calculateTotalOwed(id).call();
+          const remainingDebt = await trustlend.methods.calculateRemainingDebt(id).call();
+          const paidAmount = loan.paidAmount;
+
+          const totalOwedNum = parseFloat(web3.utils.fromWei(totalOwed, 'ether'));
+          const remainingNum = parseFloat(web3.utils.fromWei(remainingDebt, 'ether'));
+          const paidNum = parseFloat(web3.utils.fromWei(paidAmount, 'ether'));
+
+          totalOutstanding += remainingNum;
+          totalColl += parseFloat(web3.utils.fromWei(loan.collateral, 'ether'));
+
+          const paymentProgress = totalOwedNum > 0 ? (paidNum / totalOwedNum * 100) : 0;
+
+          const startTime = Number(loan.startTime);
+          const duration = Number(loan.duration);
+          const now = Date.now() / 1000;
+          const remaining = startTime + duration - now;
+          const daysLeft = remaining > 0 ? Math.ceil(remaining / 86400) : 0;
+
+          healthHTML = `<div class="health">Health ${hf}%</div>
+            <div class="progress" aria-hidden="true"><i style="width:${Math.min(paymentProgress,100)}%"></i></div>
+            <div class="info-line"><div>ชำระแล้ว</div><div>${paidNum.toFixed(2)} TDAI</div></div>`;
+
+          actionsHTML = `
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input id="payment_${id}" type="number" placeholder="จำนวนที่ต้องการชำระ (TDAI)" step="0.01" style="flex:1;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text)">
+              <button data-loan-id="${id}">ชำระ</button>
+            </div>
+          `;
+
+          // history try/catch as before
+          try {
+            const paymentHistory = await trustlend.methods.getLoanPaymentHistory(id).call();
+            if (paymentHistory.length > 0) {
+              historyHTML = `<button class="secondary" onclick="toggleHistory('history_${id}')">📜 ดูประวัติการชำระ (${paymentHistory.length})</button>
+                <div id="history_${id}" style="display:none;margin-top:8px">`;
+
+              for (let i = paymentHistory.length - 1; i >= 0; i--) {
+                const payment = paymentHistory[i];
+                const amount = parseFloat(web3.utils.fromWei(payment.amount, 'ether')).toFixed(2);
+                const remaining = parseFloat(web3.utils.fromWei(payment.remainingDebt, 'ether')).toFixed(2);
+                const date = new Date(Number(payment.timestamp) * 1000);
+                const dateStr = date.toLocaleString('th-TH', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+
+                historyHTML += `<div style="padding:8px;border-radius:8px;margin-top:6px;background:rgba(255,255,255,0.02)">
+                  <div style="display:flex;justify-content:space-between"><div>ชำระ</div><div>${amount} TDAI</div></div>
+                  <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:0.9rem;margin-top:6px"><div>คงเหลือ</div><div>${remaining} TDAI</div></div>
+                  <div style="color:var(--muted);font-size:0.8rem;margin-top:6px">${dateStr}</div>
+                </div>`;
+              }
+
+              historyHTML += `</div>`;
+            }
+          } catch(e){ console.log("history load err", e); }
+        } else if (loan.status == 2) {
+          statusBadge = '<span class="badge repaid">✅ ชำระเรียบร้อย</span>';
+        } else if (loan.status == 3) {
+          statusBadge = `<span class="badge" style="background:rgba(248,113,113,0.12);color:var(--danger)">ถูกยึด</span>`;
+        }
+
+        const amount = loan.status >= 1 ? loan.amount : req.amount;
+        const interestRate = loan.status >= 1 ? loan.interestRate : req.interestRate;
+        const durationDays = loan.status >= 1 ? Math.round(loan.duration / 86400) : Math.round(req.duration / 86400);
+        const collateral = loan.status >= 1 ? loan.collateral : req.collateral;
+
+        const loanDiv = document.createElement('div');
+        loanDiv.className = 'loan-card';
+        loanDiv.innerHTML = `
+          <div class="loan-head">
+            <div>
+              <div style="font-weight:800">Loan #${id}</div>
+              <div class="loan-meta">กู้: ${web3.utils.fromWei(amount,'ether')} TDAI · ดอก: ${interestRate}% · ${durationDays} วัน</div>
+            </div>
+            <div style="text-align:right">
+              ${statusBadge}
+              <div style="color:var(--muted);font-size:0.85rem;margin-top:6px">หลักประกัน: ${web3.utils.fromWei(collateral,'ether')} ETH</div>
+            </div>
+          </div>
+
+          ${healthHTML}
+          ${actionsHTML || ''}
+          ${historyHTML || ''}
+        `;
+
+        container.appendChild(loanDiv);
+      }
+
+      // update metrics
+      document.getElementById("metric_total").innerText = totalOutstanding.toFixed(2) + ' TDAI';
+      document.getElementById("metric_coll").innerText = totalColl.toFixed(4) + ' ETH';
+      document.getElementById("metric_health").innerText = healthCount ? Math.round(healthAccum/healthCount) + '%' : '—';
+      document.getElementById("metric_next").innerText = 'ดูในรายการ';
+
+      // attach payment listeners
+      document.querySelectorAll('button[data-loan-id]').forEach(btn => {
+        btn.addEventListener('click', handlePaymentClick);
+      });
+
+    } catch(e){
+      console.error(e);
+    }
+  }
+
+  function toggleHistory(id){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
+  }
+
+  async function handlePaymentClick(e){
+    const btn = e.target;
+    const loanId = btn.getAttribute('data-loan-id');
+    await makePayment(loanId, btn);
+  }
+
+  async function makePayment(id, btn){
+    const input = document.getElementById(`payment_${id}`);
+    const paymentAmount = input ? input.value : null;
+
+    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+      alert("❌ กรุณากรอกจำนวนเงินที่ต้องการชำระ");
+      return;
+    }
+
+    try {
+      const amount = web3.utils.toWei(paymentAmount, 'ether');
+      const balance = await tdai.methods.balanceOf(account).call();
+
+      if (BigInt(balance) < BigInt(amount)) {
+        alert(`❌ TDAI ไม่พอ! ต้องการ ${paymentAmount} TDAI`);
+        return;
+      }
+
+      btn.disabled = true;
+      const orig = btn.innerText;
+      btn.innerText = "⏳ กำลังอนุมัติ...";
+
+      await tdai.methods.approve(TRUSTLEND_ADDRESS, amount).send({ from: account, gas: 200000 });
+
+      btn.innerText = "⏳ กำลังชำระ...";
+      await trustlend.methods.makePayment(id, amount).send({ from: account, gas: 600000 });
+
+      alert(`✅ ชำระ ${paymentAmount} TDAI สำเร็จ!`);
+      input.value = "";
+      btn.innerText = orig;
+      btn.disabled = false;
+      loadMyLoans();
+    } catch (e) {
+      alert("❌ ผิดพลาด: " + e.message);
+      btn.disabled = false;
+      btn.innerText = "ชำระ";
+    }
+  }
+
+  init();
+  </script>
+</body>
+</html>
