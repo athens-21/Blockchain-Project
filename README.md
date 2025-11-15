@@ -1,122 +1,30 @@
 # Blockchain-Project
-TrustLend — Minimal Decentralized Lending dApp
 
-A minimal decentralized lending dApp front-end + smart contracts. Provides borrower and lender dashboards and supports a simple collateralized lending flow using TDAI token and ETH collateral.
+# TrustLend — Minimal Decentralized Lending dApp
 
-Included Files
+TrustLend is a **minimal decentralized lending dApp** combining front-end dashboards and smart contracts for collateralized lending using ETH as collateral and TDAI tokens for repayments.  
 
-borrower11.html — Borrower dashboard
-(Request loans, view own loans, make TDAI payments)
+The project includes:
+- **borrower11.html** — Borrower dashboard: request loans, view your loans, make payments in TDAI
+- **lender12.html** — Lender dashboard: view pending loan requests, approve/fund loans, monitor repayments, liquidate if needed
+- **TDAI.sol** — Simple ERC20-like token contract with faucet, approve, and balance features for local testing
+- **TrustLend.sol** — Main lending contract: requestLoan, fundLoan, makePayment, liquidate, view payment history
 
-lender12.html — Lender dashboard
-(View pending requests, fund loans, liquidations)
+**Key Features**
+- Borrowers can request loans with ETH collateral; minimum collateral is auto-calculated
+- Lenders can browse pending requests, fund loans using TDAI, and monitor repayments
+- Repayments are made in TDAI; lenders can liquidate loans if borrowers default
 
-TDAI.sol — ERC20-like TDAI token contract (with faucet, approve, balance)
+**Local Development**
+- Supports Node.js + npm and Hardhat
+- Works with Ganache or any local Ethereum node (`http://127.0.0.1:7545`)
+- Front-ends use **web3.js v1.x**
+- TDAI includes a faucet for testing
 
-TrustLend.sol — Lending contract (requestLoan, fundLoan, makePayment, liquidate, payment history)
-
-Features
-Borrower
-
-Request loans with ETH collateral
-
-Auto-calculated minimum collateral (LTV logic inside UI)
-
-Make loan payments in TDAI
-
-Lender
-
-Browse pending loan requests
-
-Fund loans using TDAI
-
-Monitor repayments and liquidations
-
-Local Development Ready
-
-Front-ends expect a local JSON-RPC (Ganache) at http://127.0.0.1:7545
-
-Uses web3.js v1.x
-
-TDAI faucet available for testing
-
-Prerequisites
-
-Node.js + npm
-
-Hardhat or Truffle
-
-Ganache (or other local Ethereum node) running at 127.0.0.1:7545
-
-Git + GitHub account (optional)
-
-Quick Local Setup (Hardhat)
-
-Create project folder and initialize:
-
-mkdir trustlend && cd trustlend
-git init
-
-
-Copy files (borrower11.html, lender12.html, TDAI.sol, TrustLend.sol) into project.
-
-Install Hardhat:
-
-npm init -y
-npm install --save-dev hardhat
-npx hardhat # choose "Create a basic sample project"
-
-
-Add contracts under contracts/. Create a deploy script scripts/deploy.js:
-
-const hre = require("hardhat");
-
-async function main() {
-  const [deployer] = await hre.ethers.getSigners();
-
-  const TDAI = await hre.ethers.getContractFactory("TDAI");
-  const tdai = await TDAI.deploy();
-  await tdai.deployed();
-
-  const TrustLend = await hre.ethers.getContractFactory("TrustLend");
-  const trustlend = await TrustLend.deploy(tdai.address);
-  await trustlend.deployed();
-
-  console.log("TDAI:", tdai.address);
-  console.log("TrustLend:", trustlend.address);
-}
-
-main().catch(e => { console.error(e); process.exit(1); });
-
-
-Start Ganache at http://127.0.0.1:7545.
-
-Deploy contracts:
-
-npx hardhat run --network localhost scripts/deploy.js
-
-
-Update HTML UIs with deployed addresses:
-
-const TDAI_ADDRESS = "<deployed_tdai_address>";
-const TRUSTLEND_ADDRESS = "<deployed_trustlend_address>";
-
-
-Serve HTML locally:
-
-npx http-server . -p 8080
-# open http://localhost:8080/borrower11.html or lender12.html
-
-Typical Flow (Local Testing)
-
-Deploy TDAI and TrustLend.
-
-Mint TDAI to lender account using TDAI.faucet.
-
-Borrower opens borrower11.html, sets amount/collateral, and sends requestLoan (ETH collateral).
-
-Lender opens lender12.html, views pending loans, approves & calls fundLoan (transfers TDAI to contract).
-
-Borrower makes payments using TDAI (approve then makePayment).
-
-Lender monitors payments and can liquidate if borrower defaults.
+**Typical Workflow**
+1. Deploy smart contracts: TDAI and TrustLend
+2. Lender mints TDAI using the faucet for testing
+3. Borrower opens `borrower11.html`, sets loan amount and collateral, and calls `requestLoan`
+4. Lender opens `lender12.html`, views pending loans, approves, and funds the loan (`fundLoan`)
+5. Borrower makes repayments in TDAI (`approve` → `makePayment`)
+6. Lender monitors repayments and can liquidate if default occurs
