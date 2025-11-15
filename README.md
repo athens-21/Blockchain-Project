@@ -1,44 +1,56 @@
 # Blockchain-Project
-TrustLend — Minimal dApp (Borrower + Lender UIs)
+TrustLend — Minimal Decentralized Lending dApp
 
-Short description
-A minimal decentralized lending dApp front-end + smart contract sources. Includes two front-end dashboards (borrower and lender) and smart contracts for a simple collateralized lending flow using TDAI token and ETH collateral.
+A minimal decentralized lending dApp front-end + smart contracts. Provides borrower and lender dashboards and supports a simple collateralized lending flow using TDAI token and ETH collateral.
 
-What’s included
+Included Files
 
-borrower11.html — Borrower dashboard (request loan, view own loans, make TDAI payments). 
+borrower11.html — Borrower dashboard
+(Request loans, view own loans, make TDAI payments)
 
-borrower11
+lender12.html — Lender dashboard
+(View pending requests, fund loans, liquidations)
 
-lender12.html — Lender dashboard (view pending requests, fund loans, liquidations). 
+TDAI.sol — ERC20-like TDAI token contract (with faucet, approve, balance)
 
-lender12
+TrustLend.sol — Lending contract (requestLoan, fundLoan, makePayment, liquidate, payment history)
 
-TDAI.sol — ERC20-like TDAI token contract (faucet, approve, balance). (uploaded)
+Features
+Borrower
 
-TrustLend.sol — Main lending contract (requestLoan, fundLoan, makePayment, liquidate, payment history). (uploaded)
+Request loans with ETH collateral
 
-Quick features
+Auto-calculated minimum collateral (LTV logic inside UI)
 
-Borrower: request loan with ETH collateral, auto-calculated minimum collateral (example LTV logic inside UI).
+Make loan payments in TDAI
 
-Lender: browse pending loan requests, approve/fund loan using TDAI.
+Lender
 
-Local development ready: UIs expect a local JSON-RPC (Ganache) at http://127.0.0.1:7545 and use web3 v1.x.
+Browse pending loan requests
 
-Example token faucet available in TDAI.sol for local testing.
+Fund loans using TDAI
 
-Prerequisites (local dev)
+Monitor repayments and liquidations
+
+Local Development Ready
+
+Front-ends expect a local JSON-RPC (Ganache) at http://127.0.0.1:7545
+
+Uses web3.js v1.x
+
+TDAI faucet available for testing
+
+Prerequisites
 
 Node.js + npm
 
-Hardhat or Truffle (example steps below use Hardhat)
+Hardhat or Truffle
 
-Ganache (or any local Ethereum node) running on 127.0.0.1:7545
+Ganache (or other local Ethereum node) running at 127.0.0.1:7545
 
-Basic Git + GitHub account
+Git + GitHub account (optional)
 
-Quick local setup (recommended using Hardhat)
+Quick Local Setup (Hardhat)
 
 Create project folder and initialize:
 
@@ -46,7 +58,7 @@ mkdir trustlend && cd trustlend
 git init
 
 
-Copy the provided files (borrower11.html, lender12.html, TDAI.sol, TrustLend.sol) into the repository.
+Copy files (borrower11.html, lender12.html, TDAI.sol, TrustLend.sol) into project.
 
 Install Hardhat:
 
@@ -55,43 +67,56 @@ npm install --save-dev hardhat
 npx hardhat # choose "Create a basic sample project"
 
 
-Put the .sol files under contracts/ and update sample scripts or create a deploy script scripts/deploy.js to deploy TDAI then TrustLend. Example (very short outline):
+Add contracts under contracts/. Create a deploy script scripts/deploy.js:
 
-// scripts/deploy.js (outline)
 const hre = require("hardhat");
-async function main(){
+
+async function main() {
   const [deployer] = await hre.ethers.getSigners();
+
   const TDAI = await hre.ethers.getContractFactory("TDAI");
-  const tdai = await TDAI.deploy(); await tdai.deployed();
+  const tdai = await TDAI.deploy();
+  await tdai.deployed();
+
   const TrustLend = await hre.ethers.getContractFactory("TrustLend");
-  const trustlend = await TrustLend.deploy(tdai.address); await trustlend.deployed();
-  console.log("TDAI:", tdai.address, "TrustLend:", trustlend.address);
+  const trustlend = await TrustLend.deploy(tdai.address);
+  await trustlend.deployed();
+
+  console.log("TDAI:", tdai.address);
+  console.log("TrustLend:", trustlend.address);
 }
-main().catch(e=>{console.error(e);process.exit(1)});
+
+main().catch(e => { console.error(e); process.exit(1); });
 
 
-Start Ganache (GUI or CLI) so chain is available at http://127.0.0.1:7545. Use same accounts from Ganache in your UIs.
+Start Ganache at http://127.0.0.1:7545.
 
-Deploy:
+Deploy contracts:
 
 npx hardhat run --network localhost scripts/deploy.js
 
 
-Update borrower11.html / lender12.html constants TDAI_ADDRESS and TRUSTLEND_ADDRESS with the deployed addresses.
+Update HTML UIs with deployed addresses:
 
-Serve the HTML locally (simple static server), e.g.:
+const TDAI_ADDRESS = "<deployed_tdai_address>";
+const TRUSTLEND_ADDRESS = "<deployed_trustlend_address>";
+
+
+Serve HTML locally:
 
 npx http-server . -p 8080
 # open http://localhost:8080/borrower11.html or lender12.html
 
-Typical flow (local testing)
+Typical Flow (Local Testing)
 
 Deploy TDAI and TrustLend.
 
-Use TDAI.faucet (if available) to mint TDAI to lender account.
+Mint TDAI to lender account using TDAI.faucet.
 
-Borrower opens borrower11.html, sets amount/collateral and sends requestLoan (pays ETH collateral).
+Borrower opens borrower11.html, sets amount/collateral, and sends requestLoan (ETH collateral).
 
-Lender opens lender12.html, sees pending loans, approves & calls fundLoan (which transfers TDAI to the contract).
+Lender opens lender12.html, views pending loans, approves & calls fundLoan (transfers TDAI to contract).
 
-Borrower makes payments using TDAI (approve then makePayment), lender monitors and can liquidate if default.
+Borrower makes payments using TDAI (approve then makePayment).
+
+Lender monitors payments and can liquidate if borrower defaults.
